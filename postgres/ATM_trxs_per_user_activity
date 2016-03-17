@@ -1,0 +1,43 @@
+with FAU as 
+(Select user_created, count(created) as  trxs 
+from dwh_user_activity
+inner join dwh_adorable_transaction using(user_created)
+inner join lr_user using(user_created)
+where activity_type = 1
+and activity_end > now()
+and mcc_group = 1
+group by user_created),
+RAU as 
+(Select user_created, count(created) as  trxs 
+from dwh_user_activity
+inner join dwh_adorable_transaction using(user_created)
+inner join lr_user using(user_created)
+where activity_type = 2
+and mcc_group = 1
+and gender = 0
+and activity_end > now()
+group by user_created),
+SAU as
+(Select user_created, count(created) as  trxs 
+from dwh_user_activity
+inner join dwh_adorable_transaction using(user_created)
+inner join lr_user using(user_created)
+where activity_type = 3
+and activity_end > now()
+and mcc_group = 1
+and gender = 0
+group by user_created),
+DD as 
+(with step as (Select user_created 
+from dwh_user_activity
+inner join dwh_adorable_transaction using(user_created)
+inner join lr_user using(user_created)
+where type = 'DD'
+and gender = 0
+group by user_created)
+Select user_created, count(created) as trxs
+from step 
+left join dwh_adorable_transaction using(user_created)
+where mcc_group = 1
+group by user_created)
+Select 'FAU', round(sum(trxs)/count(1),2),(select count(1) from dwh_user_activity inner join lr_user using(user_created) where activity_type = 1 and activity_end > now()) from FAU
