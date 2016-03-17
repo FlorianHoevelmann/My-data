@@ -1,0 +1,27 @@
+with step as (
+Select  created as  trxs,
+CASE
+    WHEN EXTRACT('year' FROM age(birth_date))::text >= '18' AND EXTRACT('year' FROM age(birth_date))::text <= '20' then '18-20'
+    WHEN EXTRACT('year' FROM age(birth_date))::text >= '21' AND EXTRACT('year' FROM age(birth_date))::text <= '25' then '21-25'
+    WHEN EXTRACT('year' FROM age(birth_date))::text >= '26' AND EXTRACT('year' FROM age(birth_date))::text <= '30' then '26-30'
+    WHEN EXTRACT('year' FROM age(birth_date))::text >= '31' AND EXTRACT('year' FROM age(birth_date))::text <= '35' then '31-35'
+    WHEN EXTRACT('year' FROM age(birth_date))::text >= '36' AND EXTRACT('year' FROM age(birth_date))::text <= '40' then '36-40'
+    WHEN EXTRACT('year' FROM age(birth_date))::text >= '41' AND EXTRACT('year' FROM age(birth_date))::text <= '45' then '41-45'
+    WHEN EXTRACT('year' FROM age(birth_date))::text >= '46' AND EXTRACT('year' FROM age(birth_date))::text <= '50' then '46-50'
+    WHEN EXTRACT('year' FROM age(birth_date))::text >= '51' AND EXTRACT('year' FROM age(birth_date))::text <= '55' then '51-55'
+    WHEN EXTRACT('year' FROM age(birth_date))::text >= '56' AND EXTRACT('year' FROM age(birth_date))::text <= '60' then '56-60'
+    WHEN EXTRACT('year' FROM age(birth_date))::text >= '61' AND EXTRACT('year' FROM age(birth_date))::text <= '65' then '61-65'
+    WHEN EXTRACT('year' FROM age(birth_date))::text >= '66' AND EXTRACT('year' FROM age(birth_date))::text <= '70' then '66-70'
+    WHEN EXTRACT('year' FROM age(birth_date))::text >= '71' AND EXTRACT('year' FROM age(birth_date))::text <= '75' then '71-75'
+    WHEN EXTRACT('year' FROM age(birth_date))::text > '75' OR EXTRACT('year' FROM age(birth_date))::text >= '100' then '76+'
+ELSE EXTRACT('year' FROM age(birth_date))::text END       as age_bucket
+from dwh_user_activity
+inner join dwh_adorable_transaction using(user_created)
+inner join lr_user using(user_created)
+where activity_type = 3
+and activity_end > now() 
+Group by trxs, EXTRACT('year' FROM age(birth_date))::text)
+Select count(trxs)
+from step 
+group by age_bucket 
+order by age_bucket
