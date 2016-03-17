@@ -1,0 +1,43 @@
+ with step as
+(Select user_created, amount_cents/100 as amount, to_char(created, 'YYYY-MM') as date
+from dwh_adorable_transaction 
+where type = 'CT' 
+and amount_cents/100 > 1500
+group by amount_cents/100, user_created, date),
+step2 as 
+(select user_created, count(distinct date) as times from step group by user_created)
+
+Select count(user_created) from step2 
+inner join lr_user using(user_created)
+where shipping_addr_country_name = 0
+and times >= 2 
+union all
+Select count(user_created) from step2 
+inner join lr_user using(user_created)
+where shipping_addr_country_name = 1
+and times >= 2
+union all
+Select count(user_created) from step2 
+inner join lr_user using(user_created)
+where shipping_addr_country_name = 4
+and times >= 2 
+union all
+Select count(user_created) from step2 
+inner join lr_user using(user_created)
+where shipping_addr_country_name = 9
+and times >= 2 
+union all
+Select count(user_created) from step2 
+inner join lr_user using(user_created)
+where shipping_addr_country_name = 5
+and times >= 2 
+union all
+Select count(user_created) from step2 
+inner join lr_user using(user_created)
+where shipping_addr_country_name = 7
+and times >= 2 
+union all
+Select count(user_created) from step2 
+inner join lr_user using(user_created)
+where shipping_addr_country_name = 31
+and times >= 2 
