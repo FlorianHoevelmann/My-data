@@ -1,0 +1,42 @@
+with DOM as 
+(select Round(sum(amount_cents/100.0),4) as "GEV_DOM_SUM", count(created) as "TRXS_DOM_SUM",
+'match'::text as match  
+from dwh_adorable_transaction 
+inner join lr_user using (user_created)
+left join dwh_country_codes on dwh_country_codes.two_letter = dwh_adorable_transaction.partner_iban_left2
+where (dwh_country_codes.id = shipping_addr_country_name
+or merchant_country = shipping_addr_country_name)
+and extract(month from created) = extract(month from now())),
+
+EEA as  
+(select Round(sum(amount_cents/100.0),4) as "GEV_EEA_SUM", count(created) as "TRXS_EEA_SUM",
+'match'::text as match  
+from dwh_adorable_transaction 
+inner join lr_user using (user_created)
+left join dwh_country_codes as iban on iban.two_letter = dwh_adorable_transaction.partner_iban_left2
+left join dwh_country_codes as atm on atm.id = merchant_country
+where 
+((iban.id in (0,1,4,6,7,8,9,10,11,12,13,14,15,16,17,23,26,27,28,29,30,31,32,33,34,48,49,159)
+and iban.id <> shipping_addr_country_name)
+or (atm.id in (0,1,4,6,7,8,9,10,11,12,13,14,15,16,17,23,26,27,28,29,30,31,32,33,34,48,49,159)
+and atm.id <> shipping_addr_country_name))
+and extract(month from created) = extract(month from now())),
+
+TOTAL as
+(Select Round(sum(amount_cents/100.0),4) as "GEV_TOTAL_SUM", count(created) as "TRXS_TOTAL_SUM",
+'match'::text as match 
+from dwh_adorable_transaction 
+where extract(month from created) = extract(month from now()))
+
+Select to_char(now()-interval '1 Month', 'Mon') as "MONTH",
+"GEV_TOTAL_SUM", "GEV_DOM_SUM", "GEV_EEA_SUM", "GEV_TOTAL_SUM"-"GEV_DOM_SUM"-"GEV_EEA_SUM" as "GEV_INTER_REGIONAL_SUM",
+Round(100*"GEV_DOM_SUM"/"GEV_TOTAL_SUM", 2) as "GEV_DOM_PERCENT", 
+Round(100*"GEV_EEA_SUM"/"GEV_TOTAL_SUM", 2) as "GEV_EEA_PERCENT", 
+Round(100*("GEV_TOTAL_SUM"-"GEV_DOM_SUM"-"GEV_EEA_SUM")/"GEV_TOTAL_SUM", 2) as "GEV_INTER_REGIONAL_PERCENT",
+"TRXS_TOTAL_SUM", "TRXS_DOM_SUM", "TRXS_EEA_SUM", "TRXS_TOTAL_SUM"-"TRXS_DOM_SUM"-"TRXS_EEA_SUM" as "TRXS_INTER_REGIONAL_SUM",
+Round(100*"TRXS_DOM_SUM"/"TRXS_TOTAL_SUM", 2) as "TRXS_DOM_PERCENT", 
+Round(100*"TRXS_EEA_SUM"/"TRXS_TOTAL_SUM", 2) as "TRXS_EEA_PERCENT", 
+Round(100*("TRXS_TOTAL_SUM"-"TRXS_DOM_SUM"-"TRXS_EEA_SUM")/"TRXS_TOTAL_SUM", 2) as "TRXS_INTER_REGIONAL_PERCENT"
+from DOM 
+inner join EEA using (match)
+inner join TOTAL using (match)
