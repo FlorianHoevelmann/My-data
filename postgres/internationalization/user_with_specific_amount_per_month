@@ -1,0 +1,42 @@
+ with step as
+(Select user_created, amount_cents/100 as amount, to_char(created, 'YYYY-MM') as date
+from dwh_adorable_transaction 
+where type = 'CT'  
+group by amount_cents/100, user_created, date),
+variable as (Select 31)
+
+Select (Select count(1) from lr_user where shipping_addr_country_name =(Select * from variable)),
+count(distinct user_created) from step 
+inner join lr_user using(user_created)
+where shipping_addr_country_name = (Select * from variable)
+and amount > 250 
+union all
+Select (Select count(1) from lr_user where shipping_addr_country_name =(Select * from variable)),
+count(distinct user_created) from step 
+inner join lr_user using(user_created)
+where shipping_addr_country_name = (Select * from variable)
+and amount > 500
+union all
+Select (Select count(1) from lr_user where shipping_addr_country_name =(Select * from variable)),
+count(distinct user_created) from step 
+inner join lr_user using(user_created)
+where shipping_addr_country_name = (Select * from variable)
+and amount > 750 
+union all
+Select (Select count(1) from lr_user where shipping_addr_country_name =(Select * from variable)),
+count(distinct user_created) from step 
+inner join lr_user using(user_created)
+where shipping_addr_country_name = (Select * from variable)
+and amount > 1000 
+union all
+Select (Select count(1) from lr_user where shipping_addr_country_name =(Select * from variable)),
+count(distinct user_created) from step 
+inner join lr_user using(user_created)
+where shipping_addr_country_name = (Select * from variable)
+and amount > 1250
+union all
+Select (Select count(1) from lr_user where shipping_addr_country_name =(Select * from variable)),
+count(distinct user_created) from step 
+inner join lr_user using(user_created)
+where shipping_addr_country_name = (Select * from variable)
+and amount > 1500  
