@@ -1,0 +1,6 @@
+Select count(distinct user_id) from lr_ugly_transaction
+left join lr_user on lr_ugly_transaction.user_id = lr_user.id
+inner join dwh_user_activity using(user_created) 
+where user_smart_category = 'micro-salary'
+and activity_type <> 3 
+and amount_cents/100 > 200 
