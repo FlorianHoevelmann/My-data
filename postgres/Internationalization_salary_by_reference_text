@@ -1,0 +1,13 @@
+Select count(distinct user_id) from lr_ugly_transaction 
+left join lr_user on lr_user.id = lr_ugly_transaction.user_id
+where shipping_addr_country_name = 9
+and (reference_text like '%salario%'
+or reference_text like '%renta%'
+or reference_text like '%sueldo%'
+or reference_text like '%ingresos%'
+or reference_text like '%nómina%'
+or reference_text like '%efectivo%'
+or reference_text like '%dinero de bolsillo%'
+or reference_text like '%flujo de dinero%'
+or reference_text like '%capital%'
+or reference_text like '%ingresos%')
