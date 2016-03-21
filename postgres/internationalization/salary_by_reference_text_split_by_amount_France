@@ -1,0 +1,24 @@
+with main as 
+(Select user_id, amount_cents/100 as amount from lr_ugly_transaction 
+left join lr_user on lr_user.id = lr_ugly_transaction.user_id
+where shipping_addr_country_name = 1
+and (lower(reference_text) like '%salaire%'
+or lower(reference_text) like '%remuneration%'
+or lower(reference_text) like '%indemnite%'
+or lower(reference_text) like '%paie%'
+or lower(reference_text) like '%revenu%'
+or lower(reference_text) like '%loyer%'
+or lower(reference_text) like '%argent de poche%'
+or lower(reference_text) like '%prime%'
+or lower(reference_text) like '%argent%'))
+Select count(user_id) from main where amount >= 250
+union all 
+Select count(user_id) from main where amount >= 500
+union all 
+Select count(user_id) from main where amount >= 750
+union all 
+Select count(user_id) from main where amount >= 1000
+union all 
+Select count(user_id) from main where amount >= 1250
+union all 
+Select count(user_id) from main where amount >= 1500
