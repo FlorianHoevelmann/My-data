@@ -1,0 +1,21 @@
+with step as (Select lr_user.id, available_balance_cents/100 as available_balance, 
+bank_balance_cents/100 as bank_balance, to_timestamp(lr_account.updated/1000) as acc_updated
+from lr_user
+inner join lr_account using(user_created)
+inner join lr_risk_model using(user_created)
+inner join dwh_adorable_transaction using(user_created)
+where available_balance_cents/100 < -50
+and dwh_adorable_transaction.created > now() - interval '2 Day'
+and type = 'DD'
+and (lr_risk_model.id is null or max_overdraft_cents*(-1) > available_balance_cents)
+group by 1,2,3,4)
+Select id, available_balance, bank_balance, acc_updated,
+SUM(CASE WHEN type = 'BUA' and (confirmed is null or (confirmed is null and failed > confirmed)) THEN amount_cents/100.0 ELSE 0 END) AS failed_bua_sum,
+SUM(CASE WHEN type = 'BUS' and (confirmed is null or (confirmed is null and failed > confirmed)) THEN amount_cents/100.0 ELSE 0 END) AS failed_bus_sum,
+SUM(CASE WHEN type = 'DT' and (confirmed is null or (confirmed is null and failed > confirmed)) THEN amount_cents/100.0 ELSE 0 END)	AS failed_DT_sum,
+SUM(CASE WHEN type = 'FT' and (confirmed is null or (confirmed is null and failed > confirmed)) THEN amount_cents/100.0 ELSE 0 END)	AS failed_FT_sum 
+from lr_ugly_transaction
+left join step on step.id = user_id
+where step.id is not null 
+and type in ('BUA', 'BUA', 'DT', 'FT', 'DD')
+group by 1,2,3,4
