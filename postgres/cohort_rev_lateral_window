@@ -1,0 +1,32 @@
+with month as 
+(SELECT to_char(end_time, 'YYYY-MM-DD') as month FROM dwh_cohort_months where end_time BETWEEN '2015-11-20T00:00:00' AND now())
+SELECT
+month.month, sum(account_rev.available_balance_cents)/100.0*0.089*(-1)/ user_activity.FAU
+FROM
+month
+left join lateral 
+(Select count(distinct user_created) as FAU from dwh_user_activity 
+where activity_type = 1
+and activity_start::date < month.month::date
+and activity_end::date >= month.month::date
+) user_activity on True
+left join lateral
+(
+   SELECT 
+       *,
+       ROW_NUMBER() OVER(PARTITION BY user_created ORDER BY rev_timestamp DESC) AS rn
+   FROM lr_account_aud WHERE rev_timestamp::date <= month.month::date) 
+account_rev on TRUE
+left join lateral 
+(
+   SELECT 
+        *,
+        ROW_NUMBER() OVER(PARTITION BY user_created ORDER BY rev_timestamp DESC) AS rn
+    FROM lr_risk_model_aud WHERE rev_timestamp::date <= month.month::date
+    and account_rev.user_created = user_created) 
+risk_model_rev on true
+WHERE risk_model_rev.max_overdraft_cents >0 AND
+available_balance_cents < 0
+and risk_model_rev.rn = 1
+and account_rev.rn = 1 
+group by month.month, user_activity.FAU
