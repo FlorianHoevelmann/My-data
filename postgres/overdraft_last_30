@@ -1,0 +1,22 @@
+with main as (with days as (Select to_char(end_time, 'YYYY-MM-DD') as day from dwh_cohort_dates where 
+end_time between now()-interval '28 Day' and now())
+Select days.day, sum(risk_model_rev.max_overdraft_cents/100.0) as max_overdraft, sum(available_balance_cents/100.0) as available_balance, 
+count(distinct account_rev.user_created) as users
+from days
+left join lateral
+(SELECT *,
+ROW_NUMBER() OVER(PARTITION BY user_created ORDER BY rev_timestamp DESC) AS rn
+FROM lr_risk_model_aud WHERE rev_timestamp <= day::date)
+risk_model_rev on True
+left join lateral 
+(SELECT *,
+ROW_NUMBER() OVER(PARTITION BY user_created ORDER BY rev_timestamp DESC) AS rn
+FROM lr_account_aud WHERE rev_timestamp >= now()-interval '28 Day'
+and user_created = risk_model_rev.user_created) 
+account_rev on TRUE
+where risk_model_rev.rn = 1 
+and account_rev.rn = 1
+and risk_model_rev.max_overdraft_cents >0
+and available_balance_cents <= 0 
+group by days.day)
+Select round(sum(max_overdraft),0), round(sum(available_balance),0), sum(users) from main 
