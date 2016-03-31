@@ -1,0 +1,38 @@
+with main as 
+(with dim_time as 
+(SELECT to_char(end_time, 'YYYY-MM-DD') as day FROM dwh_cohort_dates where end_time BETWEEN now()-interval '14 days' AND now())
+Select dim_time.day, user_created as cash26_user, null::date as transferwise_user, null::date as maestro_user, null::date as fino_user
+from dim_time
+inner join lateral 
+(Select user_created
+from dwh_adorable_transaction 
+where type in ('BBU', 'BUB')
+and created::date = dim_time.day::date) cash26 on True
+union
+Select dim_time.day, null, user_created, null, null
+from dim_time
+inner join lateral 
+(Select user_created
+from dwh_adorable_transaction 
+where type = 'TUB'
+and created::date = dim_time.day::date) transferwise on True
+union
+Select dim_time.day, null, null, user_created, null
+from dim_time
+inner join lateral
+(Select user_created
+from lr_card
+where card_type = 'MAESTRO'
+and created::date = dim_time.day::date) maestro on True
+union
+select dim_time.day, null, null, null, user_created
+from dim_time
+inner join lateral
+(Select user_created
+from lr_user_status_misc
+where fino_integration_completed is not null
+and to_timestamp(updated/1000)::date = dim_time.day::date) fino on true)
+Select day, count(cash26_user) as cash26_user, count(transferwise_user) as transferwise_user, count(maestro_user) as maestro_user, count(fino_user) as fino_user
+from main 
+group by day 
+order by day 
