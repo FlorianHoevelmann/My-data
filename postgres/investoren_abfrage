@@ -1,0 +1,48 @@
+with incoming as 
+(Select user_created, sum(amount_cents/100), to_char(created, 'YYYY-MM') as date
+from dwh_adorable_transaction 
+where type in ('CT', 'BBU', 'PF', 'WU')
+and date_trunc('month', created) > date_trunc('month', now() - interval '3 month')
+group by user_created, date),
+incoming2 as 
+(Select user_created from incoming group by user_created Having count(distinct date) >= 2),
+
+outgoing as 
+(Select user_created, to_char(created, 'YYYY-MM') as date
+from dwh_adorable_transaction 
+where type in ('DT', 'FT', 'PT', 'TUB', 'BUB', 'AA', 'DD')
+and amount_cents/100 >= 500
+and date_trunc('month', created) > date_trunc('month', now() - interval '3 month')
+group by user_created, date),
+outgoing2 as 
+(Select user_created from outgoing group by user_created Having count(distinct date) >= 1),
+
+card_trxs as
+(Select user_created, to_char(created, 'YYYY-MM') as date, count(created)
+from dwh_adorable_transaction 
+where type in ('AE', 'AV', 'DI', 'PF', 'PR', 'AA', 'PT')
+and date_trunc('month', created) > date_trunc('month', now() - interval '3 month')
+group by user_created, date
+having count(created) >= 5),
+card_trxs2 as 
+(Select user_created from card_trxs group by user_created Having count(distinct date) >= 2),
+
+ATM as 
+(Select user_created, to_char(created, 'YYYY-MM') as date, count(created)
+from dwh_adorable_transaction 
+where mcc_group = 1 
+and date_trunc('month', created) > date_trunc('month', now() - interval '3 month')
+group by user_created, date
+having count(created) >= 2),
+ATM2 as 
+(Select user_created from ATM group by user_created Having count(distinct date) >= 2), 
+
+bank as 
+(Select user_created, to_char(created, 'YYYY-MM') as date, count(created)
+from dwh_adorable_transaction 
+where type in ('CT', 'DT', 'FT', 'DD', 'DR')
+and date_trunc('month', created) > date_trunc('month', now() - interval '3 month')
+group by user_created, date
+having count(created) >= 2),
+bank2 as 
+(Select user_created from bank group by user_created Having count(distinct date) >= 2)
