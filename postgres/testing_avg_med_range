@@ -1,0 +1,37 @@
+WITH main as 
+  (
+  SELECT lr_risk_model.user_created, schufa_rating, count(dwh_adorable_transaction.created) AS trxs, sum(amount_cents)/100.0 AS amount,
+    EXTRACT(epoch FROM NOW() - laa.end_timestamp) /(3600*24) AS time_neg_days
+  FROM lr_risk_model
+    INNER JOIN lr_account_aud using(user_created)
+    INNER JOIN dwh_adorable_transaction USING(user_created)
+    INNER JOIN LATERAL
+    (
+     SELECT DISTINCT ON (user_created) *
+     FROM lr_account_aud 
+     WHERE
+     	rev_timestamp <= immutable_timestamp('now') AND 
+  		end_timestamp >= immutable_timestamp('now') AND
+   		available_balance_cents < 0
+   		AND lr_risk_model.user_created = lr_account_aud.user_created
+     ) neg ON TRUE
+    INNER JOIN LATERAL
+    (
+    	SELECT aa.end_timestamp
+    	FROM lr_account_aud aa 
+    	WHERE
+    		aa.user_created = neg.user_created AND
+    		aa.rev_timestamp < neg.rev_timestamp AND
+    		available_balance_cents >= max_overdraft_cents*(-1)
+    	ORDER BY rev_timestamp DESC
+	   LIMIT 1
+    ) laa ON TRUE
+  WHERE dwh_adorable_transaction.created < lr_risk_model.created
+    AND lr_account_aud.end_timestamp >= immutable_timestamp('now')
+  GROUP BY 1, 2, 5
+  )
+SELECT schufa_rating, sum(trxs)/count(user_created) as avg_trxs, percentile_cont(0.5) WITHIN GROUP (ORDER BY trxs) as median_trxs, int8range(min(trxs), max(trxs), '[]') as trxs_range,
+ sum(amount)/count(user_created) as avg_vol, percentile_cont(0.5) WITHIN GROUP (ORDER BY amount) as median_vol, numrange(round(min(amount),2), round(max(amount),2), '[]') as trxs_range, 
+ sum(time_neg_days)/count(time_neg_days) as avg_time_neg, percentile_cont(0.5) WITHIN GROUP (ORDER BY time_neg_days) as median_time_neg_days, numrange(round(min(time_neg_days::numeric),2), round(max(time_neg_days::numeric),2), '[]') as trxs_range
+FROM main
+GROUP BY 1 
